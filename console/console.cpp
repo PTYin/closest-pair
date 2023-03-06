@@ -11,7 +11,7 @@ struct Reg {
     static const unsigned NUM = 1, TOP = 2, RIGHT = 3, BOTTOM = 4, LEFT = 5;
 };
 constexpr int REG_SIZE = Reg::LEFT;
-unsigned config[REG_SIZE + 1] = {0, static_cast<int>(1e6), 1000, 1000, 0, 0};
+unsigned config[REG_SIZE + 1] = {0, static_cast<int>(1e3), 1000, 1000, 0, 0};
 
 void process(int num, dist &distX, dist &distY, rng_type &rng) {
 
@@ -20,10 +20,15 @@ void process(int num, dist &distX, dist &distY, rng_type &rng) {
         point.first = distX(rng), point.second = distY(rng);
     }
 
-    auto current = []() { return duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()); };
+    auto current = []() {
+        return chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch());
+    };
     chrono::milliseconds start = current();
     auto ans = run<double>(points, [](const auto &p) { return p.first; }, [](const auto &p) { return p.second; });
-    cout << num << ", " << (current() - start).count() << endl;
+    cout << num << ", " << (current() - start).count() << ", ";
+    start = current();
+    ans = runNaive<double>(points, [](const auto &p) { return p.first; }, [](const auto &p) { return p.second; });
+    cout << (current() - start).count() << endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -40,15 +45,18 @@ int main(int argc, char *argv[]) {
     }
 
     if (argc > 1) {
-        unsigned start = time(nullptr);
+        auto current = []() {
+            return chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch());
+        };
+        chrono::milliseconds start = current();
         auto ans = run<double>(points, [](const auto &p) { return p.first; }, [](const auto &p) { return p.second; });
         cout << "The closest pair of points: P1(" << points[ans.first].first << ", " << points[ans.first].second
              << ")  "
              << "P2(" << points[ans.second].first << ", " << points[ans.second].second << ")." << endl;
-        cout << "The distance: " << dis(points[ans.first], points[ans.second]) << endl;
-        cout << "The elapsed time equals " << time(nullptr) - start << " seconds." << endl;
+        cout << "The distance: " << dis<double>(points[ans.first], points[ans.second]) << endl;
+        cout << "The elapsed time equals " << (current() - start).count() << "ms." << endl;
     } else {
-        cout << "N, T" << endl;
+        cout << "N, O(n lgn), O(n2)" << endl;
         for (unsigned num = config[Reg::NUM] / 1000; num <= config[Reg::NUM]; num += config[Reg::NUM] / 1000)
             process(num, distX, distY, rng);
     }

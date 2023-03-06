@@ -42,7 +42,7 @@ void RenderArea::keyPressEvent(QKeyEvent *event) {
 }
 
 void RenderArea::paintEvent(QPaintEvent *event) {
-    auto result = finished ? run(*points, [](const auto &p) { return p.x(); }, [](const auto &p) { return p.y(); })
+    auto result = finished ? run<int>(*points, [](const auto &p) { return p.x(); }, [](const auto &p) { return p.y(); })
                            : make_pair(-1, -1);
 
     QPainter painter(this);

@@ -8,83 +8,98 @@
 
 using namespace std;
 
-template<typename T>
-auto dis(pair<T, T> a, pair<T, T> b) {
-    T dx = a.first - b.first;
-    T dy = a.second - b.second;
+template<typename T, typename P, typename X = function<T(const P &)>, typename Y = function<T(const P &)>>
+auto dis(P &&a, P &&b, X x = [](const P &p) { return p.first; }, Y y = [](const P &p) { return p.second; }) {
+    auto dx = x(a) - x(b);
+    auto dy = y(a) - y(b);
     return sqrt(dx * dx + dy * dy);
 }
 
-template<typename T>
-static pair<int, int> _run(const vector<pair<T, T>> &points) {
+template<typename T, template<typename, typename...> class C, typename P, typename X, typename Y, typename... Args>
+static pair<int, int> _run(C<P, Args...> &points, X x, Y y) {
     size_t n = points.size();
     if (n <= 1)
         return {-1, -1};
 
-    T L = floor(1e9 + 7), R = 0;
+    T l = static_cast<T>(1e9 + 7), r = 0;
     for (auto p: points) {
-        L = min(L, p.first);
-        R = max(R, p.first);
+        l = min(l, x(p));
+        r = max(r, x(p));
     }
-    T mid = (L + R) / 2;
+    T mid = (l + r) / 2;
 
-
-    vector<pair<T, T>> left, right;
-    vector<int> id1, id2;
+    vector<P> left, right;
+    vector<int> idLeft, idRight;
     for (int i = 0; i < points.size(); i++) {
-        if (points[i].first <= mid && left.size() < n / 2) {
+        if (x(points[i]) <= mid && left.size() < n / 2) {
             left.push_back(points[i]);
-            id1.push_back(i);
+            idLeft.push_back(i);
         } else {
             right.push_back(points[i]);
-            id2.push_back(i);
+            idRight.push_back(i);
         }
     }
-    pair<int, int> ans1 = _run(left);
-    pair<int, int> ans2 = _run(right);
-    pair<int, int> ans = make_pair(0, 0);
+
+    pair<int, int> ansLeft = _run<T>(left, x, y);
+    pair<int, int> ansRight = _run<T>(right, x, y);
+    pair<int, int> ans = {0, 0};
     double d = 1e18;
-    if (ans1.first != -1 && ans1.second != -1) {
-        double d1 = dis(left[ans1.first], left[ans1.second]);
-        if (d1 < d) {
-            d = d1;
-            ans = make_pair(id1[ans1.first], id1[ans1.second]);
+
+    if (ansLeft.first != -1 && ansLeft.second != -1) {
+        double dLeft = dis<T>(left[ansLeft.first], left[ansLeft.second], x, y);
+        if (dLeft < d) {
+            d = dLeft;
+            ans = {idLeft[ansLeft.first], idLeft[ansLeft.second]};
         }
     }
-    if (ans2.first != -1 && ans2.second != -1) {
-        double d2 = dis(right[ans2.first], right[ans2.second]);
-        if (d2 < d) {
-            d = d2;
-            ans = make_pair(id2[ans2.first], id2[ans2.second]);
+
+    if (ansRight.first != -1 && ansRight.second != -1) {
+        double dRight = dis<T>(right[ansRight.first], right[ansRight.second], x, y);
+        if (dRight < d) {
+            d = dRight;
+            ans = {idRight[ansRight.first], idRight[ansRight.second]};
         }
     }
 
     int head = 0, tail = 0;
     for (int i = 0; i < left.size(); i++) {
-        T y1 = left[i].second;
-        while (head < right.size() && right[head].second - y1 < d)
+        T yLeft = y(left[i]);
+        while (head < right.size() && y(right[head]) - yLeft < d)
             head++;
-        while (tail < head && y1 - right[tail].second > d)
+        while (tail < head && yLeft - y(right[tail]) > d)
             tail++;
         for (int j = tail; j < head; j++) {
-            double d3 = dis(left[i], right[j]);
-            if (d3 < d) {
-                d = d3;
-                ans = make_pair(id1[i], id2[j]);
+            double dCenter = dis<T>(left[i], right[j], x, y);
+            if (dCenter < d) {
+                d = dCenter;
+                ans = {idLeft[i], idRight[j]};
             }
         }
     }
+
     return ans;
 }
 
 template<typename T, template<typename, typename...> class C, typename P, typename X, typename Y, typename... Args>
-pair<int, int> run(C<P, Args...> &points, X &&x, Y &&y) {
+pair<int, int> run(C<P, Args...> &points, X x, Y y) {
     sort(begin(points), end(points), [&y](auto &a, auto &b) { return y(a) < y(b); });
-    vector<pair<T, T>> pointsStd(points.size());
-    transform(cbegin(points), cend(points), pointsStd.begin(), [&x, &y](const auto &p){
-        return pair<T, T>(x(p), y(p));
-    });
-    return _run(pointsStd);
+    return _run<T>(points, x, y);
+}
+
+template<typename T, template<typename, typename...> class C, typename P, typename X, typename Y, typename... Args>
+pair<int, int> runNaive(C<P, Args...> &points, X x, Y y) {
+    T minVal = static_cast<T>(1e9 + 7);
+    pair<int, int> ans;
+    for (int i = 0; i < size(points); i++) {
+        for (int j = i + 1; j < size(points); j++) {
+            T d = dis<T>(points[i], points[j], x, y);
+            if (d < minVal) {
+                minVal = d;
+                ans = {i, j};
+            }
+        }
+    }
+    return ans;
 }
 
 #endif //QT_CLOSEST_PAIR_FUNC_HPP
